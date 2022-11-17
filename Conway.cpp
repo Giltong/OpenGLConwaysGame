@@ -11,16 +11,13 @@ void Conway::tick() {
     for(int x = 0; x < size; x++)
     {
         testBoard[x] = new bool[size];
-        for (int y = 0;y < 100; ++y) {
+        for (int y = 0;y < size; ++y) {
             testBoard[x][y] = values[x][y];
         }
     }
 
-
-
-    for(int x = 0; x < size; x++)
-    {
-        for (int y = 0; y < size; y++) {
+    for(int x = 0; x < size; ++x) {
+        for (int y = 0; y < size; ++y) {
             int alive = 0;
             for(int x_offset = -1; x_offset < 2; x_offset++)
             {
@@ -53,6 +50,7 @@ void Conway::tick() {
                     }
                 }
             }
+
             if(alive < 2 || alive > 3)
             {
                 values[x][y] = false;
@@ -63,6 +61,7 @@ void Conway::tick() {
             }
         }
     }
+
     delete[] testBoard;
 }
 
@@ -72,17 +71,32 @@ Conway::Conway(int max_size) {
     for(int y = 0; y < max_size; y++)
     {
         values[y] = new bool[max_size];
-        for (int x = 0; x < 100; ++x) {
+        for (int x = 0; x < max_size; ++x) {
             values[y][x] = false;
         }
     }
-    values[50][50] = true;
-    values[50][49] = true;
-    values[50][48] = true;
-    values[49][48] = true;
-    values[48][49] = true;
 }
 
 bool** Conway::get_table() {
     return values;
 }
+
+int Conway::get_size() {
+    return size;
+}
+
+void Conway::set(int x, int y, bool alive) {
+    values[x][y] = alive;
+}
+
+void Conway::reset() {
+    values = new bool * [size];
+    for(int y = 0; y < size; y++)
+    {
+        values[y] = new bool[size];
+        for (int x = 0; x < size; ++x) {
+            values[y][x] = false;
+        }
+    }
+}
+

@@ -7,30 +7,44 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 #include <iostream>
+#include "imgui.h"
+#include "imgui_impl_opengl3.h"
+#include "imgui_impl_glfw.h"
+
+
 #include "Conway.hpp"
 
 
-void cursorToGrid(double &x_mouse, double &y_mouse);
+void cursorToGrid(int &xmouse, int &ymouse);
 
-void cursorToGrid(double &x_mouse, double &y_mouse, int size) {
-    x_mouse = (x_mouse + 1) * (size/2.0f);
-    y_mouse = (y_mouse + 1) * (size/2.0f);
-}
+
+
+int x_mouse, y_mouse;
+float w_width=400, w_height=400;
 
 static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
+    w_width = width;
+    w_height = height;
 }
 
-double x_mouse, y_mouse;
+int size=200;
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
-    x_mouse = xpos;
-    y_mouse = ypos;
-    cursorToGrid(x_mouse, y_mouse, 100);
+        x_mouse = xpos;
+        y_mouse = ypos;
+        cursorToGrid(x_mouse, y_mouse);
 }
 
-
+void cursorToGrid(int &xmouse, int &ymouse) {
+    xmouse = xmouse/w_width * size;
+    ymouse = size - ymouse/w_height * size;
+    if(xmouse < 0) xmouse = 0;
+    if(xmouse > size-1) xmouse = size-1;
+    if(ymouse < 0) ymouse = 0;
+    if(ymouse > size-1) ymouse = size-1;
+}
 
 const char* vertex_source = R"glsl(
     #version 150 core
@@ -59,10 +73,11 @@ Renderer::Renderer() {
     {
         std::cout << "GLFW failed to initialize" << std::endl;
     }
+    const char* glsl_version = "#version 150 core";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    GLFWwindow* window = glfwCreateWindow(400, 400, "Conway's Game", nullptr, nullptr);
+    window = glfwCreateWindow(400, 400, "Conway's Game", nullptr, nullptr);
     if (!window)
     {
         glfwTerminate();
@@ -76,6 +91,15 @@ Renderer::Renderer() {
     glfwSetCursorPosCallback(window, cursor_position_callback);
     glViewport(0,0,400,400);
 
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+
+    ImGui::GetVersion();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    in.setWindow(window);
 
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
@@ -93,24 +117,26 @@ Renderer::Renderer() {
             {
                     0,0,
                     1,0,
-                    0,-1,
-                    0,-1,
+                    0,1,
+                    0,1,
                     1,0,
-                    1,-1
+                    1,1
             };
     glBufferData(GL_ARRAY_BUFFER, sizeof (vertices), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(glGetAttribLocation(b_shader.ID,"position"), 2, GL_FLOAT, GL_FALSE, 0, nullptr);
     glEnableVertexAttribArray(0);
     b_shader.SetUniform4f("incolor", {1.0, 1.0, 1.0, 1.0});
 
-    glm::mat4 proj = glm::ortho<float>(0,100,-1,99, -1, 1);
+    glm::mat4 proj = glm::ortho<float>(0,c.get_size(),0,c.get_size(), -1, 1);
     b_shader.SetUniformMatrix4fv("proj", proj);
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         glClearColor(0.0, 0.0, 0.0, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
+        size = c.get_size();
         update();
         draw();
+        draw_gui();
         glfwSwapBuffers(window);
     }
 }
@@ -129,24 +155,109 @@ void Renderer::changeScale(float minX, float maxX, float minY, float maxY) {
 }
 
 void Renderer::draw() {
-    for (int i = 0; i < 100; ++i) {
-        for (int j = 0; j < 100; ++j) {
+    for (int i = 0; i < c.get_size(); ++i) {
+        for (int j = 0; j < c.get_size(); ++j) {
             if(c.get_table()[i][j])
             {
                 drawTile(i,j);
             }
         }
     }
+
 }
 
+bool held = false;
 void Renderer::update() {
+
     double ct = glfwGetTime()-lt;
-    c.get_table()[(int)x_mouse][(int)y_mouse] = true;
-    if(ct > 0.05)
+    if(in.getMouseButton(GLFW_MOUSE_BUTTON_1))
     {
-        c.tick();
+        c.get_table()[x_mouse][y_mouse] = true;
+    }
+
+    if(in.getKeyDown(GLFW_KEY_ESCAPE))
+    {
+        menuBar = !menuBar;
+    }
+
+    if(in.getMouseButton(GLFW_MOUSE_BUTTON_2))
+    {
+        c.get_table()[x_mouse][y_mouse] = false;
+    }
+
+    if(in.getKeyDown(GLFW_KEY_SPACE))
+    {
+        enabled = !enabled;
+    }
+
+    if(in.getKeyDown(GLFW_KEY_R))
+    {
+        c.reset();
+    }
+
+    if(ct > 0.1)
+    {
+        if (enabled)
+        {
+            c.tick();
+        }
         lt = glfwGetTime();
     }
 
 
+
+}
+
+void Renderer::draw_gui() {
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+
+    if(tutorialWindow)
+    {
+        ImGui::SetNextWindowPos({w_width/2,w_height/2}, 0, {0.5,0.5});
+        ImGui::SetNextWindowSize({w_width/2,w_height/2});
+
+        ImGui::Begin("Tutorial", &tutorialWindow, ImGuiWindowFlags_NoResize + ImGuiWindowFlags_NoCollapse);
+        ImGui::Text("Press ESC to toggle menu");
+        ImGui::End();
+    }
+
+    if(ImGui::BeginMainMenuBar() && menuBar)
+    {
+        if(ImGui::BeginMenu("Settings"))
+        {
+            if(ImGui::Button("Reset (R)"))
+            {
+                c.reset();
+            }
+
+            std::string curLabel;
+            if(enabled)
+            {
+                curLabel = "Stop (Space)";
+            }
+            else
+            {
+                curLabel = "Start (Space)";
+            }
+
+            if(ImGui::Button(curLabel.c_str()))
+            {
+                enabled = !enabled;
+            }
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+
+    //ImGui::End();
+
+
+
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
