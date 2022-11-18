@@ -2,12 +2,12 @@
 #include "GLFW/glfw3.h"
 #include <iostream>
 #include "Shader.hpp"
-#include "Renderer.hpp"
+#include "Application.hpp"
 #include "Conway.hpp"
-Renderer* r;
+Application* r;
 
 int main() {
-    r = new Renderer();
+    r = new Application();
     delete r;
 }
 

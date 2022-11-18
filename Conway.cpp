@@ -51,11 +51,11 @@ void Conway::tick() {
                 }
             }
 
-            if(alive < 2 || alive > 3)
+            if(alive < minPop || alive > maxPop)
             {
                 values[x][y] = false;
             }
-            else if(alive == 3)
+            else if(alive == reproductionPop)
             {
                 values[x][y] = true;
             }

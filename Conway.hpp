@@ -11,15 +11,19 @@ class Conway {
 public:
     Conway(int max_size);
     void tick();
-    std::vector<std::pair<int, int>> recentChange;
     bool** get_table();
     int get_size();
     void set(int x, int y, bool alive);
     void reset();
     void resize(int new_size);
+public:
+    int maxPop = 3;
+    int minPop = 2;
+    int reproductionPop = 3;
 private:
     int size;
     bool** values;
+
 };
 
 

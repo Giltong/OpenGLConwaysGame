@@ -2,7 +2,7 @@
 // Created by GPowers on 11/3/2022.
 //
 
-#include "Renderer.hpp"
+#include "Application.hpp"
 
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
@@ -68,7 +68,7 @@ const char* fragment_source = R"glsl(
 	)glsl";
 
 
-Renderer::Renderer() {
+Application::Application() {
     if(!glfwInit())
     {
         std::cout << "GLFW failed to initialize" << std::endl;
@@ -141,7 +141,7 @@ Renderer::Renderer() {
     }
 }
 
-void Renderer::drawTile(int x, int y)
+void Application::drawTile(int x, int y)
 {
     glm::mat4 trans = glm::mat4(1.0f);
     trans = glm::translate(trans, glm::vec3{x,y,0.0});
@@ -149,12 +149,12 @@ void Renderer::drawTile(int x, int y)
     glDrawArrays(GL_TRIANGLES, 0 , 6);
 }
 
-void Renderer::changeScale(float minX, float maxX, float minY, float maxY) {
+void Application::changeScale(float minX, float maxX, float minY, float maxY) {
     glm::mat4 proj = glm::ortho<float>(minX,maxY,minY,maxY, -1, 1);
     b_shader.SetUniformMatrix4fv("proj", proj);
 }
 
-void Renderer::draw() {
+void Application::draw() {
     for (int i = 0; i < c.get_size(); ++i) {
         for (int j = 0; j < c.get_size(); ++j) {
             if(c.get_table()[i][j])
@@ -167,7 +167,7 @@ void Renderer::draw() {
 }
 
 bool held = false;
-void Renderer::update() {
+void Application::update() {
 
     double ct = glfwGetTime()-lt;
     if(in.getMouseButton(GLFW_MOUSE_BUTTON_1))
@@ -195,7 +195,7 @@ void Renderer::update() {
         c.reset();
     }
 
-    if(ct > 0.1)
+    if(ct > 1.0f/tps)
     {
         if (enabled)
         {
@@ -208,7 +208,7 @@ void Renderer::update() {
 
 }
 
-void Renderer::draw_gui() {
+void Application::draw_gui() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -228,7 +228,7 @@ void Renderer::draw_gui() {
     {
         if(ImGui::BeginMenu("Settings"))
         {
-            if(ImGui::Button("Reset (R)"))
+            if(ImGui::MenuItem("Reset (R)"))
             {
                 c.reset();
             }
@@ -243,9 +243,45 @@ void Renderer::draw_gui() {
                 curLabel = "Start (Space)";
             }
 
-            if(ImGui::Button(curLabel.c_str()))
+            if(ImGui::MenuItem(curLabel.c_str()))
             {
                 enabled = !enabled;
+            }
+
+            ImGui::SliderFloat("TPS", &tps, 0.0f, 20.0f, "%.1f");
+
+
+
+            ImGui::EndMenu();
+        }
+        if(ImGui::BeginMenu("Custom Rules"))
+        {
+            ImGui::InputInt("Minimum Population", &c.minPop);
+            ImGui::InputInt("Maximum Population", &c.maxPop);
+            ImGui::InputInt("Reproduction Population", &c.reproductionPop);
+
+            if(ImGui::BeginMenu("Presets"))
+            {
+                if(ImGui::MenuItem("Game of Life (Default)"))
+                {
+                    c.minPop = 2;
+                    c.maxPop = 3;
+                    c.reproductionPop = 3;
+                }
+                if(ImGui::MenuItem("Creeping Vines"))
+                {
+                    c.minPop = 2;
+                    c.maxPop = 5;
+                    c.reproductionPop = 3;
+                }
+                if(ImGui::MenuItem("Fractal Squares"))
+                {
+                    c.minPop = 1;
+                    c.maxPop = 8;
+                    c.reproductionPop = 1;
+                }
+
+                ImGui::EndMenu();
             }
 
             ImGui::EndMenu();

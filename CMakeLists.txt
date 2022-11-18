@@ -39,6 +39,6 @@ include_directories(
 
 link_directories(${PROJECT_SOURCE_DIR}/glfw/lib-mingw-w64)
 
-add_executable(Project main.cpp glad.c Shader.cpp Shader.hpp Renderer.cpp Renderer.hpp Conway.cpp Conway.hpp input.cpp input.hpp)
+add_executable(Project main.cpp glad.c Shader.cpp Shader.hpp Application.cpp Application.hpp Conway.cpp Conway.hpp input.cpp input.hpp)
 
 target_link_libraries(Project mingw32 ${PROJECT_SOURCE_DIR}/libs/glfw/lib-mingw-w64/libglfw3.a opengl32 IMGUI)
