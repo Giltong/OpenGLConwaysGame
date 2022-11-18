@@ -224,7 +224,7 @@ void Renderer::draw_gui() {
         ImGui::End();
     }
 
-    if(ImGui::BeginMainMenuBar() && menuBar)
+    if(menuBar && ImGui::BeginMainMenuBar())
     {
         if(ImGui::BeginMenu("Settings"))
         {
@@ -250,11 +250,8 @@ void Renderer::draw_gui() {
 
             ImGui::EndMenu();
         }
-
         ImGui::EndMainMenuBar();
     }
-
-    //ImGui::End();
 
 
 
