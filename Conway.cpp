@@ -23,7 +23,7 @@ std::set<std::pair<int,int>> get_neighbors(std::set<std::pair<int,int>> current_
                 int x = cell.first + x_offset;
                 int y =  cell.second + y_offset;
 
-                if(current_alive.find({x,y}) == current_alive.end())
+                if(current_alive.find({x,y}) == current_alive.end() && neighbors.find({x,y}) == neighbors.end())
                 {
                     neighbors.insert({x,y});
                 }
