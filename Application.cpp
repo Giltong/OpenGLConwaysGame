@@ -29,7 +29,7 @@ static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     w_height = height;
 }
 
-int size=200;
+int size=1000;
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
         x_mouse = xpos;
@@ -37,9 +37,17 @@ static void cursor_position_callback(GLFWwindow* window, double xpos, double ypo
         cursorToGrid(x_mouse, y_mouse);
 }
 
+float zoomScale = 1.0f;
+static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    zoomScale += yoffset;
+    std::cout << zoomScale;
+}
+
+
 void cursorToGrid(int &xmouse, int &ymouse) {
-    xmouse = xmouse/w_width * size;
-    ymouse = size - ymouse/w_height * size;
+    xmouse = xmouse/w_width * 1000;
+    ymouse = 1000 - ymouse/w_height * 1000;
     if(xmouse < 0) xmouse = 0;
     if(xmouse > size-1) xmouse = size-1;
     if(ymouse < 0) ymouse = 0;
@@ -89,6 +97,7 @@ Application::Application() {
     }
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetScrollCallback(window, scroll_callback);
     glViewport(0,0,400,400);
 
     ImGui::CreateContext();
@@ -127,13 +136,13 @@ Application::Application() {
     glEnableVertexAttribArray(0);
     b_shader.SetUniform4f("incolor", {1.0, 1.0, 1.0, 1.0});
 
-    glm::mat4 proj = glm::ortho<float>(0,c.get_size(),0,c.get_size(), -1, 1);
+    glm::mat4 proj = glm::ortho<float>(0,1000,0,1000, -1, 1);
     b_shader.SetUniformMatrix4fv("proj", proj);
+
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         glClearColor(0.0, 0.0, 0.0, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
-        size = c.get_size();
         update();
         draw();
         draw_gui();
@@ -150,17 +159,15 @@ void Application::drawTile(int x, int y)
 }
 
 void Application::changeScale(float minX, float maxX, float minY, float maxY) {
-    glm::mat4 proj = glm::ortho<float>(minX,maxY,minY,maxY, -1, 1);
+    glm::mat4 proj = glm::ortho<float>(minX,maxY,minY,maxX, -1, 1);
     b_shader.SetUniformMatrix4fv("proj", proj);
 }
 
 void Application::draw() {
-    for (int i = 0; i < c.get_size(); ++i) {
-        for (int j = 0; j < c.get_size(); ++j) {
-            if(c.get_table()[i][j])
-            {
-                drawTile(i,j);
-            }
+    for (const auto& point : c.get_table()) {
+        if(point.second)
+        {
+            drawTile(point.first, point.second);
         }
     }
 
@@ -168,11 +175,10 @@ void Application::draw() {
 
 bool held = false;
 void Application::update() {
-
     double ct = glfwGetTime()-lt;
     if(in.getMouseButton(GLFW_MOUSE_BUTTON_1))
     {
-        c.get_table()[x_mouse][y_mouse] = true;
+        c.get_table().insert({x_mouse,y_mouse});
     }
 
     if(in.getKeyDown(GLFW_KEY_ESCAPE))
@@ -182,7 +188,7 @@ void Application::update() {
 
     if(in.getMouseButton(GLFW_MOUSE_BUTTON_2))
     {
-        c.get_table()[x_mouse][y_mouse] = false;
+        c.get_table().erase({x_mouse,y_mouse});
     }
 
     if(in.getKeyDown(GLFW_KEY_SPACE))

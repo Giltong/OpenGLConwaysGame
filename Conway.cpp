@@ -4,99 +4,86 @@
 
 #include <iostream>
 #include "Conway.hpp"
+#include <unordered_set>
 
-
-void Conway::tick() {
-    bool** testBoard = new bool * [size];
-    for(int x = 0; x < size; x++)
+std::set<std::pair<int,int>> get_neighbors(std::set<std::pair<int,int>> current_alive)
+{
+    std::set<std::pair<int,int>> neighbors{};
+    for(const auto& cell : current_alive)
     {
-        testBoard[x] = new bool[size];
-        for (int y = 0;y < size; ++y) {
-            testBoard[x][y] = values[x][y];
+        for(int x_offset = -1; x_offset < 2; x_offset++)
+        {
+            for(int y_offset = -1; y_offset < 2; y_offset++)
+            {
+                if(x_offset == 0 && y_offset == 0)
+                {
+                    continue;
+                }
+
+                int x = cell.first + x_offset;
+                int y =  cell.second + y_offset;
+
+                if(current_alive.find({x,y}) == current_alive.end())
+                {
+                    neighbors.insert({x,y});
+                }
+            }
         }
     }
 
-    for(int x = 0; x < size; ++x) {
-        for (int y = 0; y < size; ++y) {
+    return neighbors;
+}
+
+void Conway::tick() {
+
+    std::set<std::pair<int,int>> cur_alive_cells = alive_cells;
+    neighbors = get_neighbors(cur_alive_cells);
+    std::set<std::pair<int,int>> cells_to_check;
+    cells_to_check.insert(cur_alive_cells.begin(), cur_alive_cells.end());
+    cells_to_check.insert(neighbors.begin(), neighbors.end());
+        for(const auto& point : cells_to_check)
+        {
             int alive = 0;
+            int x = point.first;
+            int y = point.second;
+
             for(int x_offset = -1; x_offset < 2; x_offset++)
             {
                 int cur_x = x + x_offset;
-                if(x + x_offset < 0)
-                {
-                    cur_x = size-1;
-                }
-                if(x + x_offset >= size)
-                {
-                    cur_x = 0;
-                }
                 for (int y_offset = -1; y_offset < 2; y_offset++) {
                     int cur_y = y + y_offset;
                     if(x_offset == 0 && y_offset == 0)
                     {
                         continue;
                     }
-                    if(y + y_offset < 0)
-                    {
-                        cur_y = size-1;
-                    }
-                    if(y + y_offset >= size)
-                    {
-                        cur_y = 0;
-                    }
-                    if(testBoard[cur_x][cur_y])
+                    auto k = cur_alive_cells.find({cur_x, cur_y});
+                    if(k != cur_alive_cells.end())
                     {
                         alive++;
                     }
                 }
             }
-
             if(alive < minPop || alive > maxPop)
             {
-                values[x][y] = false;
+                alive_cells.erase({x,y});
             }
-            else if(alive == reproductionPop)
+            else if(alive == reproductionPop && cur_alive_cells.find({x, y}) == cur_alive_cells.end())
             {
-                values[x][y] = true;
+                alive_cells.insert({x,y});
             }
         }
-    }
-
-    delete[] testBoard;
 }
 
-Conway::Conway(int max_size) {
-    size = max_size;
-    values = new bool * [max_size];
-    for(int y = 0; y < max_size; y++)
-    {
-        values[y] = new bool[max_size];
-        for (int x = 0; x < max_size; ++x) {
-            values[y][x] = false;
-        }
-    }
+std::set<std::pair<int,int>>& Conway::get_table() {
+    return alive_cells;
 }
 
-bool** Conway::get_table() {
-    return values;
-}
-
-int Conway::get_size() {
-    return size;
-}
 
 void Conway::set(int x, int y, bool alive) {
-    values[x][y] = alive;
+
 }
 
 void Conway::reset() {
-    values = new bool * [size];
-    for(int y = 0; y < size; y++)
-    {
-        values[y] = new bool[size];
-        for (int x = 0; x < size; ++x) {
-            values[y][x] = false;
-        }
-    }
+    alive_cells.clear();
+    neighbors.clear();
 }
-

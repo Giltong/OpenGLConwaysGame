@@ -12,7 +12,7 @@
 #include "GLFW/glfw3.h"
 class Application {
 public:
-    GLFWwindow* window;
+    GLFWwindow* window{};
     Application();
     void drawTile(int x, int y);
     void changeScale(float minX, float maxX, float minY, float maxY);
@@ -22,7 +22,7 @@ private:
     void draw_gui();
 private:
     Shader b_shader{};
-    Conway c{1000};
+    Conway c;
     input in{window};
     float tps = 10;
     bool enabled = false;
