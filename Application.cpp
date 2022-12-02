@@ -13,45 +13,49 @@
 
 
 #include "Conway.hpp"
-
+#include "cmath"
 
 void cursorToGrid(int &xmouse, int &ymouse);
 
 
 
-int x_mouse, y_mouse;
-float w_width=400, w_height=400;
+int x_mouse{};
+int y_mouse{};
+int scale = 50;
+int window_width = 800, window_height = 450;
+float xRight = 80, xLeft = -80, yTop = 45, yBottom = -45;
+float aspectRatio = window_width/window_height;
+
+void resize_window()
+{
+    float wScale = scale * (window_width / 200);
+    float hScale =  scale * (window_height / 200);
+    xRight = wScale/2;
+    xLeft = -wScale/2;
+    yBottom = -hScale/2;
+    yTop = hScale/2;
+}
 
 static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    glViewport(0, 0, width, height);
-    w_width = width;
-    w_height = height;
+    double w = width;
+    double h = height;
+    glViewport(0,0,width,height);
+    window_width = width;
+    window_height = height;
+    aspectRatio = window_width/window_height;
+    resize_window();
 }
 
-int size=1000;
+//void cursorToGrid(int &xmouse, int &ymouse) {
+//
+//}
+
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
-        x_mouse = xpos;
-        y_mouse = ypos;
-        cursorToGrid(x_mouse, y_mouse);
-}
-
-float zoomScale = 1.0f;
-static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    zoomScale += yoffset;
-    std::cout << zoomScale;
-}
-
-
-void cursorToGrid(int &xmouse, int &ymouse) {
-    xmouse = xmouse/w_width * 1000;
-    ymouse = 1000 - ymouse/w_height * 1000;
-    if(xmouse < 0) xmouse = 0;
-    if(xmouse > size-1) xmouse = size-1;
-    if(ymouse < 0) ymouse = 0;
-    if(ymouse > size-1) ymouse = size-1;
+//    cursorToGrid(x_mouse, y_mouse);
+    x_mouse = round(xpos/window_width * (xRight - xLeft) + xLeft - 0.5);
+    y_mouse = round(ypos/window_height * (yBottom - yTop) + yTop - 0.5);
 }
 
 const char* vertex_source = R"glsl(
@@ -85,7 +89,7 @@ Application::Application() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    window = glfwCreateWindow(400, 400, "Conway's Game", nullptr, nullptr);
+    window = glfwCreateWindow(window_width, window_height, "Conway's Game", nullptr, nullptr);
     if (!window)
     {
         glfwTerminate();
@@ -97,8 +101,7 @@ Application::Application() {
     }
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-    glViewport(0,0,400,400);
+    glViewport(0,0,window_width,window_height);
 
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -135,14 +138,15 @@ Application::Application() {
     glVertexAttribPointer(glGetAttribLocation(b_shader.ID,"position"), 2, GL_FLOAT, GL_FALSE, 0, nullptr);
     glEnableVertexAttribArray(0);
     b_shader.SetUniform4f("incolor", {1.0, 1.0, 1.0, 1.0});
-
-    glm::mat4 proj = glm::ortho<float>(0,1000,0,1000, -1, 1);
+    resize_window();
+    glm::mat4 proj = glm::ortho<float>(xLeft, xRight, yBottom, yTop, -1, 1);
     b_shader.SetUniformMatrix4fv("proj", proj);
 
     while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         glClearColor(0.0, 0.0, 0.0, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
+        changeScale(xLeft, xRight, yBottom, yTop);
         update();
         draw();
         draw_gui();
@@ -159,17 +163,15 @@ void Application::drawTile(int x, int y)
 }
 
 void Application::changeScale(float minX, float maxX, float minY, float maxY) {
-    glm::mat4 proj = glm::ortho<float>(minX,maxY,minY,maxX, -1, 1);
+    glm::mat4 proj = glm::ortho<float>(minX,maxX,minY,maxY, -1, 1);
     b_shader.SetUniformMatrix4fv("proj", proj);
 }
 
 void Application::draw() {
     for (const auto& point : c.get_table()) {
-        if(point.second)
-        {
-            drawTile(point.first, point.second);
-        }
+        drawTile(point.first, point.second);
     }
+    drawTile(x_mouse,y_mouse);
 
 }
 
@@ -178,6 +180,7 @@ void Application::update() {
     double ct = glfwGetTime()-lt;
     if(in.getMouseButton(GLFW_MOUSE_BUTTON_1))
     {
+
         c.get_table().insert({x_mouse,y_mouse});
     }
 
@@ -220,19 +223,24 @@ void Application::draw_gui() {
     ImGui::NewFrame();
 
 
-    if(tutorialWindow)
-    {
-        ImGui::SetNextWindowPos({w_width/2,w_height/2}, 0, {0.5,0.5});
-        ImGui::SetNextWindowSize({w_width/2,w_height/2});
-
-        ImGui::Begin("Tutorial", &tutorialWindow, ImGuiWindowFlags_NoResize + ImGuiWindowFlags_NoCollapse);
-        ImGui::Text("Press ESC to toggle menu");
-        ImGui::End();
-    }
+//    if(tutorialWindow)
+//    {
+//        ImGui::SetNextWindowPos({window_width/2,window_height/2}, 0, {0.5,0.5});
+//        ImGui::SetNextWindowSize({window_width/2,window_height/2});
+//
+//        ImGui::Begin("Tutorial", &tutorialWindow, ImGuiWindowFlags_NoResize + ImGuiWindowFlags_NoCollapse);
+//        ImGui::Text("Press ESC to toggle menu");
+//        ImGui::End();
+//    }
 
     if(menuBar && ImGui::BeginMainMenuBar())
     {
-        if(ImGui::BeginMenu("Settings"))
+        if(ImGui::BeginMenu("Window"))
+        {
+
+            ImGui::EndMenu();
+        }
+        if(ImGui::BeginMenu("Controls"))
         {
             if(ImGui::MenuItem("Reset (R)"))
             {

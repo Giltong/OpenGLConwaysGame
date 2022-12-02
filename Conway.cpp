@@ -6,7 +6,7 @@
 #include "Conway.hpp"
 #include <unordered_set>
 
-std::set<std::pair<int,int>> get_neighbors(std::set<std::pair<int,int>> current_alive)
+std::set<std::pair<int,int>> get_neighbors(const std::set<std::pair<int,int>> &current_alive)
 {
     std::set<std::pair<int,int>> neighbors{};
     for(const auto& cell : current_alive)
@@ -35,7 +35,6 @@ std::set<std::pair<int,int>> get_neighbors(std::set<std::pair<int,int>> current_
 }
 
 void Conway::tick() {
-
     std::set<std::pair<int,int>> cur_alive_cells = alive_cells;
     neighbors = get_neighbors(cur_alive_cells);
     std::set<std::pair<int,int>> cells_to_check;
