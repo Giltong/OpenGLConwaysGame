@@ -16,10 +16,12 @@ public:
     Application();
     void drawTile(int x, int y);
     void changeScale(float minX, float maxX, float minY, float maxY);
+    void loop();
 private:
     void draw();
     void update();
     void draw_gui();
+    void get_input();
 private:
     Shader b_shader{};
     Conway c;
@@ -27,8 +29,15 @@ private:
     float tps = 10;
     bool enabled = false;
     bool tutorialWindow = true;
-    bool menuBar = false;
-    double lt = 0;
+    bool menuBar = true;
+    double lastTick{};
+    float dt{};
+    double lt{};
+
+
+    float beginX{};
+    float beginY{};
+    bool dragging = false;
 };
 
 

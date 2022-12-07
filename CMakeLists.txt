@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-project(Project)
+project(Conway)
 
 set(CMAKE_CXX_STANDARD 14)
 
@@ -11,7 +11,7 @@ set(GLM_INCLUDE_PATH "${CMAKE_SOURCE_DIR}/libs/glm")
 
 set(IMGUI_INCLUDE_PATH "${CMAKE_SOURCE_DIR}/libs/imgui")
 
-set(IMPLOT_INCLUDE_PATH "${CMAKE_SOURCE_DIR}/libs/implot")
+set(CMAKE_EXE_LINKER_FLAGS -static)
 
 add_library(IMGUI STATIC)
 
@@ -39,6 +39,6 @@ include_directories(
 
 link_directories(${PROJECT_SOURCE_DIR}/glfw/lib-mingw-w64)
 
-add_executable(Project main.cpp glad.c Shader.cpp Shader.hpp Application.cpp Application.hpp Conway.cpp Conway.hpp input.cpp input.hpp)
+add_executable(Conway main.cpp glad.c Shader.cpp Shader.hpp Application.cpp Application.hpp Conway.cpp Conway.hpp input.cpp input.hpp)
 
-target_link_libraries(Project mingw32 ${PROJECT_SOURCE_DIR}/libs/glfw/lib-mingw-w64/libglfw3.a opengl32 IMGUI)
+target_link_libraries(Conway mingw32 ${PROJECT_SOURCE_DIR}/libs/glfw/lib-mingw-w64/libglfw3.a opengl32 IMGUI -mwindows)

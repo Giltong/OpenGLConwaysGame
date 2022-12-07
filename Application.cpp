@@ -21,15 +21,19 @@ void cursorToGrid(int &xmouse, int &ymouse);
 
 int x_mouse{};
 int y_mouse{};
-int scale = 50;
+float scale = 50;
 int window_width = 800, window_height = 450;
 float xRight = 80, xLeft = -80, yTop = 45, yBottom = -45;
+float xOffset = 0.0f;
+float yOffset = 0.0f;
+float moveSpeed = 20.0f;
+float scrollSpeed = 95.0f;
 float aspectRatio = window_width/window_height;
 
 void resize_window()
 {
-    float wScale = scale * (window_width / 200);
-    float hScale =  scale * (window_height / 200);
+    float wScale = scale * (window_width / 200.0f);
+    float hScale =  scale * (window_height / 200.0f);
     xRight = wScale/2;
     xLeft = -wScale/2;
     yBottom = -hScale/2;
@@ -45,6 +49,7 @@ static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     window_height = height;
     aspectRatio = window_width/window_height;
     resize_window();
+    static_cast<Application*>(glfwGetWindowUserPointer(window))->loop();
 }
 
 //void cursorToGrid(int &xmouse, int &ymouse) {
@@ -54,9 +59,27 @@ static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos)
 {
 //    cursorToGrid(x_mouse, y_mouse);
-    x_mouse = round(xpos/window_width * (xRight - xLeft) + xLeft - 0.5);
-    y_mouse = round(ypos/window_height * (yBottom - yTop) + yTop - 0.5);
+    x_mouse = round(xpos/window_width * (xRight - xLeft) + (xLeft + xOffset) - 0.5);
+    y_mouse = round(ypos/window_height * (yBottom - yTop) + (yTop + yOffset) - 0.5);
 }
+
+//static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+//{
+//    if(yoffset < 0)
+//    {
+//        scale = (1.0f/(scrollSpeed / 100) * scale);
+//    }
+//    else if(yoffset > 0)
+//    {
+//        scale = (scrollSpeed / 100) * scale;
+//    }
+//
+//    if(scale < 1)
+//    {
+//        scale = 1;
+//    }
+//    resize_window();
+//}
 
 const char* vertex_source = R"glsl(
     #version 150 core
@@ -99,8 +122,11 @@ Application::Application() {
     {
         std::cout << "Failed to initialize GLAD" << std::endl;
     }
+    glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
+//    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetWindowSizeLimits(window, 100, 100, GLFW_DONT_CARE, GLFW_DONT_CARE);
     glViewport(0,0,window_width,window_height);
 
     ImGui::CreateContext();
@@ -143,14 +169,8 @@ Application::Application() {
     b_shader.SetUniformMatrix4fv("proj", proj);
 
     while(!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-        glClearColor(0.0, 0.0, 0.0, 1.0);
-        glClear(GL_COLOR_BUFFER_BIT);
-        changeScale(xLeft, xRight, yBottom, yTop);
-        update();
-        draw();
-        draw_gui();
-        glfwSwapBuffers(window);
+        loop();
+
     }
 }
 
@@ -163,7 +183,7 @@ void Application::drawTile(int x, int y)
 }
 
 void Application::changeScale(float minX, float maxX, float minY, float maxY) {
-    glm::mat4 proj = glm::ortho<float>(minX,maxX,minY,maxY, -1, 1);
+    glm::mat4 proj = glm::ortho<float>(minX + xOffset,maxX + xOffset,minY + yOffset,maxY + yOffset, -1, 1);
     b_shader.SetUniformMatrix4fv("proj", proj);
 }
 
@@ -177,32 +197,9 @@ void Application::draw() {
 
 bool held = false;
 void Application::update() {
-    double ct = glfwGetTime()-lt;
-    if(in.getMouseButton(GLFW_MOUSE_BUTTON_1))
-    {
+    double ct = glfwGetTime()-lastTick;
+    dt = glfwGetTime() - lt;
 
-        c.get_table().insert({x_mouse,y_mouse});
-    }
-
-    if(in.getKeyDown(GLFW_KEY_ESCAPE))
-    {
-        menuBar = !menuBar;
-    }
-
-    if(in.getMouseButton(GLFW_MOUSE_BUTTON_2))
-    {
-        c.get_table().erase({x_mouse,y_mouse});
-    }
-
-    if(in.getKeyDown(GLFW_KEY_SPACE))
-    {
-        enabled = !enabled;
-    }
-
-    if(in.getKeyDown(GLFW_KEY_R))
-    {
-        c.reset();
-    }
 
     if(ct > 1.0f/tps)
     {
@@ -210,9 +207,9 @@ void Application::update() {
         {
             c.tick();
         }
-        lt = glfwGetTime();
+        lastTick = glfwGetTime();
     }
-
+    lt = glfwGetTime();
 
 
 }
@@ -221,25 +218,33 @@ void Application::draw_gui() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    if(tutorialWindow)
+    {
+        ImGui::SetNextWindowPos({window_width/2.0f,window_height/2.0f}, ImGuiCond_Once, {0.5,0.5});
+        ImGui::SetNextWindowSize({window_width/2.0f,window_height/2.0f}, ImGuiCond_Once);
+        if(ImGui::Begin("Tutorial", &tutorialWindow))
+        {
+            ImGui::TextWrapped("Conway's Game of Life is a simulation of cellular automata, which is a unpredictable simulation of a grid of cells. Each cell follows a certain set of rules to determine whether it lives or dies.");
+            ImGui::NewLine();
+            ImGui::TextWrapped("Use left click to place live cells.");
+            ImGui::TextWrapped("Use right click to remove live cells.");
+            ImGui::TextWrapped("Use scroll wheel to zoom in and out.");
+            ImGui::TextWrapped("Use arrow keys to move viewport.");
+            ImGui::TextWrapped("Once you have cells placed, press space to start and stop the simulation.");
+            ImGui::TextWrapped("Pressing R will reset the simulation to have no live cells.");
+            ImGui::NewLine();
+            ImGui::TextWrapped("To open and close the settings menu, press ESC.");
+            ImGui::TextWrapped("The rules tab allows you to change the properties of the game. Try adjusting them and see what changes!");
 
 
-//    if(tutorialWindow)
-//    {
-//        ImGui::SetNextWindowPos({window_width/2,window_height/2}, 0, {0.5,0.5});
-//        ImGui::SetNextWindowSize({window_width/2,window_height/2});
-//
-//        ImGui::Begin("Tutorial", &tutorialWindow, ImGuiWindowFlags_NoResize + ImGuiWindowFlags_NoCollapse);
-//        ImGui::Text("Press ESC to toggle menu");
-//        ImGui::End();
-//    }
+
+            ImGui::End();
+        }
+    }
+
 
     if(menuBar && ImGui::BeginMainMenuBar())
     {
-        if(ImGui::BeginMenu("Window"))
-        {
-
-            ImGui::EndMenu();
-        }
         if(ImGui::BeginMenu("Controls"))
         {
             if(ImGui::MenuItem("Reset (R)"))
@@ -262,16 +267,32 @@ void Application::draw_gui() {
                 enabled = !enabled;
             }
 
-            ImGui::SliderFloat("TPS", &tps, 0.0f, 20.0f, "%.1f");
+            ImGui::SliderFloat("Ticks per Second", &tps, 0.0f, 20.0f, "%.1f");
 
 
+            if(ImGui::BeginMenu("Viewport Options"))
+            {
 
+                if(ImGui::SliderFloat("Scale", &scale, 1.0f, 100.0f))
+                {
+                    if(scale < 1)
+                    {
+                        scale = 1;
+                    }
+                    resize_window();
+                }
+                if(ImGui::SliderFloat("Viewport Move Speed", &moveSpeed, 10.0f, 100.0f))
+                {
+                    resize_window();
+                }
+                ImGui::EndMenu();
+            }
             ImGui::EndMenu();
         }
-        if(ImGui::BeginMenu("Custom Rules"))
+        if(ImGui::BeginMenu("Rules"))
         {
-            ImGui::InputInt("Minimum Population", &c.minPop);
-            ImGui::InputInt("Maximum Population", &c.maxPop);
+            ImGui::InputInt("Minimum Neighbors", &c.minPop);
+            ImGui::InputInt("Maximum Neighbors", &c.maxPop);
             ImGui::InputInt("Reproduction Population", &c.reproductionPop);
 
             if(ImGui::BeginMenu("Presets"))
@@ -302,9 +323,59 @@ void Application::draw_gui() {
         }
         ImGui::EndMainMenuBar();
     }
-
-
-
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+void Application::get_input() {
+    if(glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
+        xOffset -= moveSpeed * dt;
+    }
+    if(glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
+        xOffset += moveSpeed * dt;
+    }
+    if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+        yOffset += moveSpeed * dt;
+    }
+    if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+        yOffset -= moveSpeed * dt;
+    }
+    if(in.getMouseButton(GLFW_MOUSE_BUTTON_1))
+    {
+        c.get_table().insert({x_mouse,y_mouse});
+    }
+
+    if(in.getKeyDown(GLFW_KEY_ESCAPE))
+    {
+        menuBar = !menuBar;
+    }
+
+    if(in.getMouseButton(GLFW_MOUSE_BUTTON_2))
+    {
+        c.get_table().erase({x_mouse,y_mouse});
+    }
+
+    if(in.getKeyDown(GLFW_KEY_SPACE))
+    {
+        enabled = !enabled;
+    }
+
+    if(in.getKeyDown(GLFW_KEY_R))
+    {
+        c.reset();
+    }
+}
+
+void Application::loop() {
+    glClearColor(0.0, 0.0, 0.0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    changeScale(xLeft, xRight, yBottom, yTop);
+    update();
+    draw();
+    draw_gui();
+    get_input();
+    glfwSwapBuffers(window);
+    glfwPollEvents();
 }

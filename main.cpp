@@ -6,9 +6,10 @@
 #include "Conway.hpp"
 Application* r;
 
-int main() {
+int WinMain() {
     r = new Application();
     delete r;
+    return 0;
 }
 
 
